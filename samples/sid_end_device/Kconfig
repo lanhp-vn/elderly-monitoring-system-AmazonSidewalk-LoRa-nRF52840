@@ -33,7 +33,7 @@ endif #SID_END_DEVICE_HELLO
 
 if SID_END_DEVICE_SENSOR_MONITORING
 
-rsource "Kconfig.sensor_monitoring"
+rsource "Kconfig.sensors"
 
 endif #SID_END_DEVICE_SENSOR_MONITORING
 

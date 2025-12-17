@@ -223,16 +223,23 @@ static void state_sidewalk_run(void *o)
 	case SID_EVENT_LINK_SWITCH: {
 		static uint32_t new_link_mask = DEFAULT_LM;
 
-		switch (sm->sid->config.link_mask) {
-		case SID_LINK_TYPE_1:
-			new_link_mask = SID_LINK_TYPE_2;
-			break;
-		case SID_LINK_TYPE_2:
-			new_link_mask = SID_LINK_TYPE_1 | SID_LINK_TYPE_3;
-			break;
-		default:
-			new_link_mask = SID_LINK_TYPE_1;
-			break;
+		/* Check if a specific mask was provided in the context */
+		if (sm->event.ctx != NULL) {
+			new_link_mask = (uint32_t)(uintptr_t)sm->event.ctx;
+			LOG_INF("Using provided link mask: 0x%x", new_link_mask);
+		} else {
+			/* Cycle through link types: BLE -> FSK -> BLE+LoRa -> BLE */
+			switch (sm->sid->config.link_mask) {
+			case SID_LINK_TYPE_1:
+				new_link_mask = SID_LINK_TYPE_2;
+				break;
+			case SID_LINK_TYPE_2:
+				new_link_mask = SID_LINK_TYPE_1 | SID_LINK_TYPE_3;
+				break;
+			default:
+				new_link_mask = SID_LINK_TYPE_1;
+				break;
+			}
 		}
 		sm->sid->config.link_mask = new_link_mask;
 

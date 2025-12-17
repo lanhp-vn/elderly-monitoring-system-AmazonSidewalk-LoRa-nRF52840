@@ -3,3 +3,26 @@ app-server-ed25519.public.bin
 __pycache__/
 certificate_*
 *.s37
+
+# ============================================
+# SECURITY: AWS Sidewalk provisioning files
+# These contain private keys and device credentials
+# ============================================
+
+# Device profile and wireless device configuration (contain AWS credentials)
+device_profile.json
+wireless_device.json
+
+# Manufacturing provisioning files
+mfg.bin
+mfg.hex
+*.mfg.hex
+
+# Pre-provisioned device hex files
+nordic_aws_*.hex
+
+# Any exported certificates or keys
+*.pem
+*.key
+*.crt
+*.der

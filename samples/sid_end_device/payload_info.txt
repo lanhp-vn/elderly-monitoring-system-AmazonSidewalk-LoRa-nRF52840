@@ -1,0 +1,199 @@
+================================================================================
+SIDEWALK HEALTH MONITORING SENSOR PAYLOAD SPECIFICATION
+================================================================================
+
+Last Updated: 2025-12-04
+
+This document describes the JSON payload format sent from the nRF52840 health
+monitoring device to the AWS cloud via Amazon Sidewalk MQTT.
+
+================================================================================
+1. MQTT TOPIC
+================================================================================
+
+Messages are delivered to the Sidewalk destination configured in the AWS IoT
+console. The payload arrives as the message body on the configured MQTT topic
+or Lambda function.
+
+================================================================================
+2. PAYLOAD FORMAT
+================================================================================
+
+All messages are JSON-encoded ASCII strings.
+
+Example payload:
+{"t":"R","d":1,"f":"N","b":72,"s":98,"T":3650,"la":3364585,"lo":-11784294,"B":100,"ts":18000}
+
+Maximum payload size: 200 bytes
+
+================================================================================
+3. FIELD DEFINITIONS
+================================================================================
+
+Field | Type    | Description
+------|---------|--------------------------------------------------------------
+t     | string  | Message type (see Section 4)
+d     | integer | Device ID (1-65535, configurable per device)
+f     | string  | Fall detection state (see Section 5)
+b     | integer | Heart rate in BPM (beats per minute)
+s     | integer | Blood oxygen saturation (SpO2) percentage (0-100)
+T     | integer | Body temperature in centidegrees Celsius (divide by 100)
+la    | integer | Latitude in degrees x 100000 (divide by 100000 for decimal)
+lo    | integer | Longitude in degrees x 100000 (divide by 100000 for decimal)
+B     | integer | Battery level percentage (0-100)
+ts    | integer | Timestamp in seconds since device boot
+
+================================================================================
+4. MESSAGE TYPES (field: "t")
+================================================================================
+
+Value | Name      | Description                          | Trigger
+------|-----------|--------------------------------------|---------------------------
+"R"   | Regular   | Periodic status report               | Timer (default: 15s test, 5min prod)
+"E"   | Emergency | Critical alert requiring attention   | Fall detection or abnormal vitals
+"H"   | Help      | User-initiated help request          | Button 1 short press
+
+Priority:
+- Regular (R): Fire-and-forget, no retries, lowest priority
+- Emergency (E): Retried up to 5 times, high priority
+- Help (H): Retried up to 5 times, high priority
+
+================================================================================
+5. FALL DETECTION STATE (field: "f")
+================================================================================
+
+Value | State     | Description
+------|-----------|--------------------------------------------------------------
+"N"   | Normal    | No fall activity detected
+"F"   | Free-fall | Weightlessness detected (acceleration < 0.35g)
+"I"   | Impact    | Impact detected after free-fall (acceleration > 2.4g)
+
+Fall Detection Algorithm:
+1. Free-fall phase: Acceleration magnitude < 0.35g for up to 1 second
+2. Impact phase: Acceleration > 2.4g AND rotation > 240 deg/s
+3. Confirmation: Person remains still (0.8g-1.2g) for 3 seconds
+4. Emergency message sent automatically when fall is confirmed
+
+================================================================================
+6. DATA CONVERSIONS
+================================================================================
+
+Temperature (T):
+  - Stored as centidegrees Celsius (integer)
+  - Conversion: T / 100 = degrees Celsius
+  - Example: T=3650 means 36.50°C
+
+GPS Coordinates (la, lo):
+  - Stored as degrees x 100000 (integer)
+  - Conversion: value / 100000 = decimal degrees
+  - Example: la=3364585, lo=-11784294 means 33.64585°N, 117.84294°W
+  - Note: Longitude is negative for West, positive for East
+
+Timestamp (ts):
+  - Seconds since device boot (not Unix timestamp)
+  - For absolute time, correlate with Sidewalk message receive time
+  - Alternatively, add RTC support on device for Unix timestamps
+
+================================================================================
+7. SENSOR SPECIFICATIONS
+================================================================================
+
+MPU6050 IMU (Accelerometer + Gyroscope):
+  - Sample rate: 50 Hz
+  - Used for fall detection algorithm
+  - Not directly exposed in payload (derived state in "f" field)
+
+SEN0344 Heart Rate / SpO2 Sensor (MAX30102-based):
+  - Sample rate: Every 5 seconds
+  - Heart rate range: 0-255 BPM
+  - SpO2 range: 0-100%
+  - Temperature range: 0-99.99°C
+  - Note: b=0, s=0 indicates sensor not detecting (no finger contact)
+
+NEO-6M GPS Module:
+  - Update rate: 1 Hz (callback rate-limited to 5 seconds)
+  - Accuracy: ~2.5m CEP
+  - Note: la=0, lo=0 may indicate no GPS fix
+
+================================================================================
+8. ALERT THRESHOLDS
+================================================================================
+
+Emergency messages (type "E") are triggered when:
+
+Condition               | Threshold                | Configurable
+------------------------|--------------------------|---------------
+Fall detected           | 3-phase algorithm        | Yes (can disable)
+SpO2 too low            | < 90%                    | Yes (default 90)
+Heart rate too low      | < 40 BPM                 | Yes (default 40)
+Heart rate too high     | > 180 BPM                | Yes (default 180)
+
+================================================================================
+9. SAMPLE PAYLOADS
+================================================================================
+
+Regular Report (healthy):
+{"t":"R","d":1,"f":"N","b":72,"s":98,"T":3650,"la":3364585,"lo":-11784294,"B":100,"ts":18000}
+
+Emergency - Fall Detected:
+{"t":"E","d":1,"f":"I","b":85,"s":96,"T":3680,"la":3364590,"lo":-11784300,"B":95,"ts":18245}
+
+Emergency - Low SpO2:
+{"t":"E","d":1,"f":"N","b":110,"s":85,"T":3710,"la":3364585,"lo":-11784294,"B":92,"ts":19500}
+
+Help Request (button press):
+{"t":"H","d":1,"f":"N","b":68,"s":97,"T":3640,"la":3364585,"lo":-11784294,"B":88,"ts":20100}
+
+Invalid sensor reading (no finger on sensor):
+{"t":"R","d":1,"f":"N","b":0,"s":0,"T":0,"la":3364585,"lo":-11784294,"B":100,"ts":21000}
+
+================================================================================
+10. CLOUD PROCESSING RECOMMENDATIONS
+================================================================================
+
+1. Message Type Handling:
+   - "E" (Emergency): Trigger immediate alerts (SMS, push notification, etc.)
+   - "H" (Help): Similar to emergency, user-initiated
+   - "R" (Regular): Store for monitoring, trend analysis
+
+2. Data Validation:
+   - Ignore readings where b=0 AND s=0 (sensor not detecting)
+   - Flag GPS coordinates of (0,0) as invalid/no-fix
+   - Check temperature for reasonable range (30-42°C for body temp)
+
+3. Timestamp Handling:
+   - Device timestamp (ts) is seconds since boot
+   - Use AWS IoT message receive time for absolute timestamps
+   - Calculate device uptime from ts values
+
+4. Duplicate Detection:
+   - Use device_id (d) + timestamp (ts) as unique message identifier
+   - Emergency/Help messages may be retried, deduplicate by ts
+
+5. Battery Monitoring:
+   - Track B field over time for battery health
+   - Alert when B < 20%
+   - Note: Currently stubbed at 100% (battery monitoring TBD)
+
+================================================================================
+11. CONFIGURATION REFERENCE
+================================================================================
+
+Build-time configuration (Kconfig):
+
+Option                          | Default | Description
+--------------------------------|---------|--------------------------------
+SENSORS_DEVICE_ID               | 1       | Device identifier (1-65535)
+SENSORS_REGULAR_INTERVAL_MS     | 15000   | Regular report interval (ms)
+SENSORS_CRITICAL_MSG_TTL        | 300     | Emergency msg TTL (seconds)
+SENSORS_CRITICAL_MSG_RETRIES    | 5       | Emergency msg retry count
+SENSORS_SPO2_THRESHOLD          | 90      | SpO2 alert threshold (%)
+SENSORS_BPM_LOW_THRESHOLD       | 40      | Low BPM alert threshold
+SENSORS_BPM_HIGH_THRESHOLD      | 180     | High BPM alert threshold
+SENSORS_ENABLE_FALL_DETECTION   | y       | Enable fall detection
+SENSORS_ENABLE_VITAL_MONITORING | y       | Enable vital sign alerts
+SENSORS_ENABLE_SIMULATED_GPS    | n       | Use simulated GPS when no fix
+
+================================================================================
+END OF DOCUMENT
+================================================================================

@@ -1,0 +1,168 @@
+# Sensors variant configuration options
+# Copyright (c) 2024 Nordic Semiconductor ASA
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+
+menu "Sensors Variant Configuration"
+    depends on SID_END_DEVICE_SENSOR_MONITORING
+
+# ==============================================================================
+# Device Configuration
+# ==============================================================================
+
+config SENSORS_DEVICE_ID
+    int "Device ID"
+    default 1
+    range 1 65535
+    help
+      Unique device identifier included in all sensor payloads.
+
+# ==============================================================================
+# Message Timing Configuration
+# ==============================================================================
+
+config SENSORS_REGULAR_INTERVAL_MS
+    int "Regular message interval (milliseconds)"
+    default 300000
+    range 10000 3600000
+    help
+      Interval between regular sensor reports in milliseconds.
+      Default is 300000ms (5 minutes).
+
+config SENSORS_LORA_SWITCH_DELAY_MS
+    int "LoRa switch delay (milliseconds)"
+    default 2000
+    range 1000 30000
+    help
+      Delay before switching to BLE+LoRa after conditions are met.
+      This provides stability after registration/time sync.
+
+# ==============================================================================
+# Auto LoRa Switch
+# ==============================================================================
+
+config SENSORS_AUTO_LORA_SWITCH
+    bool "Enable automatic LoRa switch"
+    default y
+    depends on SIDEWALK_SUBGHZ_SUPPORT
+    help
+      Automatically switch to BLE+LoRa mode after device registration,
+      time synchronization, and BLE link up. The switch happens once
+      and uses both BLE and LoRa for optimal connectivity.
+
+# ==============================================================================
+# Critical Message Buffer
+# ==============================================================================
+
+config SENSORS_CRITICAL_BUFFER_SIZE
+    int "Critical message buffer size"
+    default 10
+    range 2 32
+    help
+      Maximum number of Emergency and Help messages that can be
+      buffered. When full, oldest messages are replaced.
+
+config SENSORS_CRITICAL_MSG_TTL
+    int "Critical message TTL (seconds)"
+    default 300
+    range 60 3600
+    help
+      Time-to-live for critical messages in seconds.
+      Messages older than this are discarded without retry.
+
+config SENSORS_CRITICAL_MSG_RETRIES
+    int "Critical message retry count"
+    default 3
+    range 1 10
+    help
+      Maximum number of retry attempts for failed critical messages.
+
+config SENSORS_PAYLOAD_MAX_SIZE
+    int "Maximum payload size"
+    default 256
+    range 128 512
+    help
+      Maximum size of JSON payload for sensor messages.
+
+# ==============================================================================
+# Vital Signs Thresholds
+# ==============================================================================
+
+config SENSORS_SPO2_THRESHOLD
+    int "SpO2 emergency threshold (%)"
+    default 90
+    range 70 95
+    help
+      SpO2 levels below this threshold trigger an emergency alert.
+      Normal range is 95-100%, below 90% is concerning.
+
+config SENSORS_BPM_LOW_THRESHOLD
+    int "Low heart rate threshold (BPM)"
+    default 40
+    range 20 60
+    help
+      Heart rate below this value triggers an emergency alert.
+      Normal resting heart rate is 60-100 BPM.
+
+config SENSORS_BPM_HIGH_THRESHOLD
+    int "High heart rate threshold (BPM)"
+    default 180
+    range 150 220
+    help
+      Heart rate above this value triggers an emergency alert.
+      Maximum heart rate varies by age (~220-age).
+
+# ==============================================================================
+# GPS Configuration
+# ==============================================================================
+
+config SENSORS_ENABLE_SIMULATED_GPS
+    bool "Enable simulated GPS coordinates"
+    default y
+    help
+      Use simulated GPS coordinates when no GNSS hardware is available
+      or when testing indoors. When disabled and no GNSS fix is available,
+      the payload will contain -1 for latitude and longitude.
+
+config SENSORS_SIMULATED_LATITUDE
+    int "Simulated latitude (x100000)"
+    default 3364585
+    depends on SENSORS_ENABLE_SIMULATED_GPS
+    help
+      Simulated GPS latitude as integer * 100000.
+      Default is 33.64585 (Phoenix, AZ area).
+
+config SENSORS_SIMULATED_LONGITUDE
+    int "Simulated longitude (x100000)"
+    default -11195730
+    depends on SENSORS_ENABLE_SIMULATED_GPS
+    help
+      Simulated GPS longitude as integer * 100000.
+      Default is -111.95730 (Phoenix, AZ area).
+
+# ==============================================================================
+# Sensor Hardware Configuration
+# ==============================================================================
+
+config SENSORS_MPU6050_SAMPLE_RATE
+    int "MPU6050 sample rate (Hz)"
+    default 50
+    range 10 100
+    help
+      IMU sampling rate for accelerometer and gyroscope.
+      Higher rates improve fall detection but use more power.
+
+config SENSORS_SEN0344_INTERVAL_MS
+    int "SEN0344 measurement interval (ms)"
+    default 1000
+    range 100 10000
+    help
+      Interval between heart rate and SpO2 measurements.
+
+config SENSORS_GPS_UPDATE_INTERVAL_MS
+    int "GPS update interval (ms)"
+    default 5000
+    range 1000 60000
+    help
+      Rate limiting for GPS data callbacks.
+
+endmenu

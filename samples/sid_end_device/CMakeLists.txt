@@ -23,13 +23,14 @@ target_sources_ifdef(CONFIG_SIDEWALK_FILE_TRANSFER app PRIVATE
 )
 
 if(CONFIG_SID_END_DEVICE_SENSOR_MONITORING)
+    target_include_directories(app PRIVATE include/sensors)
     target_sources(app PRIVATE
-        src/sensor_monitoring/app_buttons.c
-        src/sensor_monitoring/app_leds.c
-        src/sensor_monitoring/app_sensor.c
-        src/sensor_monitoring/app_tx.c
-        src/sensor_monitoring/app_rx.c
-        src/sensor_monitoring/app.c
+        src/sensors/app.c
+        src/sensors/sensor_manager.c
+        src/sensors/gps_handler.c
+        src/sensors/mpu6050_handler.c
+        src/sensors/sen0344_handler.c
+        src/sensors/critical_msg_buffer.c
     )
 elseif(CONFIG_SID_END_DEVICE_DUT)
     target_sources(app PRIVATE
