@@ -2,6 +2,8 @@
 
 A wearable health monitoring system for elderly care that leverages **Amazon Sidewalk over LoRa** for long-range, low-power connectivity. The system provides continuous vital signs monitoring, automatic fall detection, GPS location tracking, and real-time caregiver alerts—all without requiring WiFi infrastructure or monthly subscription fees.
 
+Demo Video: https://www.youtube.com/watch?v=Cs6WsbXar5s
+
 > **MECPS 2025 Capstone Project** — UC Irvine  
 > *Hoang Lan Pham, Royston Pinto, Rudrashis Gorai*  
 > Advisor: Prof. Hung Cao | Graduate Mentor: Mohamed Benomar El Kati
