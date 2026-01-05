@@ -205,35 +205,6 @@ west build -b nrf52840dk/nrf52840 samples/sid_end_device -- \
 #   - nordic_aws_nrf52840.hex (credentials)
 #   - build/zephyr/merged.hex (application)
 ```
-
-### Step 4: Deploy Cloud Infrastructure
-
-```bash
-cd cloud/
-
-# Deploy via CloudFormation
-aws cloudformation deploy \
-  --template-file cloudformation/template.yaml \
-  --stack-name eldercare-stack \
-  --capabilities CAPABILITY_IAM
-
-# Build and deploy dashboard
-cd dashboard
-npm install
-npm run build
-aws s3 sync dist/ s3://<your-bucket-name>
-```
-
-### Step 5: View Debug Output
-
-Since UART is reserved for GPS, use **Segger RTT** for debug logs:
-
-```bash
-# Option 1: VS Code nRF Connect extension RTT console
-# Option 2: JLink RTT Viewer
-JLinkRTTViewer
-```
-
 ---
 
 ## 📊 Message Protocol
